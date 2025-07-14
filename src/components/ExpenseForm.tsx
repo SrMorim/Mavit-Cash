@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { Calendar, DollarSign, Tag, Repeat, AlertCircle } from 'lucide-react'
 import { useAppStore } from '../store'
 import { Expense } from '../types'
-import { formatCurrency } from '../utils/dateUtils'
+import { formatCurrency, getDaysInMonth, getMonthName } from '../utils/dateUtils'
 import ErrorBoundary from './ErrorBoundary'
 
 interface ExpenseFormProps {
@@ -19,9 +19,11 @@ export default function ExpenseForm({ expense, onSubmit, onCancel }: ExpenseForm
     amount: '',
     categoryId: '',
     date: new Date().toISOString().split('T')[0],
-    type: 'one-time' as 'one-time' | 'recurring',
+    type: 'one-time' as 'one-time' | 'recurring' | 'annual',
     isRecurring: false,
-    recurringDay: undefined as number | undefined
+    recurringDay: undefined as number | undefined,
+    recurringMonth: undefined as number | undefined,
+    recurringYear: undefined as number | undefined
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -42,7 +44,9 @@ export default function ExpenseForm({ expense, onSubmit, onCancel }: ExpenseForm
           date: dateValue,
           type: expense.type || 'one-time',
           isRecurring: expense.isRecurring || false,
-          recurringDay: expense.recurringDay
+          recurringDay: expense.recurringDay,
+          recurringMonth: expense.recurringMonth,
+          recurringYear: expense.recurringYear
         })
       } catch (error) {
         console.error('Error loading expense data:', error)
@@ -78,6 +82,26 @@ export default function ExpenseForm({ expense, onSubmit, onCancel }: ExpenseForm
       }
     }
 
+    if (formData.type === 'annual') {
+      const recurringMonth = formData.recurringMonth
+      if (!recurringMonth || isNaN(recurringMonth) || recurringMonth < 1 || recurringMonth > 12) {
+        newErrors.recurringMonth = 'Mês deve ser entre 1 e 12'
+      }
+      
+      const recurringDay = formData.recurringDay
+      if (!recurringDay || isNaN(recurringDay) || recurringDay < 1 || recurringDay > 31) {
+        newErrors.recurringDay = 'Dia deve ser entre 1 e 31'
+      }
+      
+      // Validar se o dia é válido para o mês selecionado
+      if (recurringMonth && recurringDay) {
+        const daysInMonth = getDaysInMonth(recurringMonth)
+        if (recurringDay > daysInMonth) {
+          newErrors.recurringDay = `Dia deve ser válido para ${getMonthName(recurringMonth)} (máximo ${daysInMonth})`
+        }
+      }
+    }
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -104,8 +128,11 @@ export default function ExpenseForm({ expense, onSubmit, onCancel }: ExpenseForm
         category,
         date: new Date(formData.date),
         type: formData.type,
-        isRecurring: formData.type === 'recurring',
-        recurringDay: formData.type === 'recurring' ? formData.recurringDay : undefined
+        isRecurring: formData.type === 'recurring' || formData.type === 'annual',
+        recurringDay: formData.type === 'recurring' ? formData.recurringDay : 
+                     formData.type === 'annual' ? formData.recurringDay : undefined,
+        recurringMonth: formData.type === 'annual' ? formData.recurringMonth : undefined,
+        recurringYear: formData.type === 'annual' ? new Date().getFullYear() : undefined
       }
 
       await new Promise(resolve => setTimeout(resolve, 500))
@@ -239,7 +266,7 @@ export default function ExpenseForm({ expense, onSubmit, onCancel }: ExpenseForm
               type="radio"
               value="one-time"
               checked={formData.type === 'one-time'}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value as 'one-time' | 'recurring' })}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value as 'one-time' | 'recurring' | 'annual' })}
               className="w-4 h-4"
             />
             <span className="text-text-primary">Única</span>
@@ -249,10 +276,20 @@ export default function ExpenseForm({ expense, onSubmit, onCancel }: ExpenseForm
               type="radio"
               value="recurring"
               checked={formData.type === 'recurring'}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value as 'one-time' | 'recurring' })}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value as 'one-time' | 'recurring' | 'annual' })}
               className="w-4 h-4"
             />
             <span className="text-text-primary">Recorrente</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              value="annual"
+              checked={formData.type === 'annual'}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value as 'one-time' | 'recurring' | 'annual' })}
+              className="w-4 h-4"
+            />
+            <span className="text-text-primary">Anual</span>
           </label>
         </div>
       </div>
@@ -289,6 +326,82 @@ export default function ExpenseForm({ expense, onSubmit, onCancel }: ExpenseForm
           <p className="text-text-secondary text-sm mt-1">
             A despesa será lançada automaticamente todo mês neste dia
           </p>
+        </motion.div>
+      )}
+
+      {/* Annual Configuration */}
+      {formData.type === 'annual' && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.2 }}
+          className="space-y-4"
+        >
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">
+              Mês para repetir
+            </label>
+            <select
+              className={`input-field w-full ${errors.recurringMonth ? 'border-red-500' : ''}`}
+              value={formData.recurringMonth || ''}
+              onChange={(e) => setFormData({ ...formData, recurringMonth: parseInt(e.target.value) })}
+            >
+              <option value="">Selecione um mês</option>
+              <option value="1">Janeiro</option>
+              <option value="2">Fevereiro</option>
+              <option value="3">Março</option>
+              <option value="4">Abril</option>
+              <option value="5">Maio</option>
+              <option value="6">Junho</option>
+              <option value="7">Julho</option>
+              <option value="8">Agosto</option>
+              <option value="9">Setembro</option>
+              <option value="10">Outubro</option>
+              <option value="11">Novembro</option>
+              <option value="12">Dezembro</option>
+            </select>
+            {errors.recurringMonth && (
+              <p className="text-red-400 text-sm mt-1 flex items-center gap-1">
+                <AlertCircle className="w-4 h-4" />
+                {errors.recurringMonth}
+              </p>
+            )}
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">
+              Dia do mês
+            </label>
+            <div className="relative">
+              <Repeat className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-text-secondary" />
+              <input
+                type="number"
+                min="1"
+                max="31"
+                placeholder="Ex: 15"
+                className={`input-field w-full pl-10 ${errors.recurringDay ? 'border-red-500' : ''}`}
+                value={formData.recurringDay || ''}
+                onChange={(e) => setFormData({ ...formData, recurringDay: parseInt(e.target.value) })}
+              />
+            </div>
+            {errors.recurringDay && (
+              <p className="text-red-400 text-sm mt-1 flex items-center gap-1">
+                <AlertCircle className="w-4 h-4" />
+                {errors.recurringDay}
+              </p>
+            )}
+          </div>
+          
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+            <h3 className="text-sm font-medium text-blue-400 mb-2">
+              💡 Despesa Anual
+            </h3>
+            <p className="text-sm text-text-secondary">
+              A despesa será lançada automaticamente todo ano no mês e dia selecionados.
+              Ideal para assinaturas anuais, seguros e licenças.
+            </p>
+          </div>
         </motion.div>
       )}
 

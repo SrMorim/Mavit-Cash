@@ -16,7 +16,7 @@ export default function Expenses() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
-  const [selectedType, setSelectedType] = useState<'all' | 'recurring' | 'one-time'>('all')
+  const [selectedType, setSelectedType] = useState<'all' | 'recurring' | 'one-time' | 'annual'>('all')
   const [sortBy, setSortBy] = useState<'date' | 'amount' | 'category'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
@@ -25,8 +25,9 @@ export default function Expenses() {
       const matchesSearch = expense.description.toLowerCase().includes(searchTerm.toLowerCase())
       const matchesCategory = !selectedCategory || expense.categoryId === selectedCategory
       const matchesType = selectedType === 'all' || 
-        (selectedType === 'recurring' && expense.isRecurring) ||
-        (selectedType === 'one-time' && !expense.isRecurring)
+        (selectedType === 'recurring' && expense.type === 'recurring') ||
+        (selectedType === 'one-time' && expense.type === 'one-time') ||
+        (selectedType === 'annual' && expense.type === 'annual')
       return matchesSearch && matchesCategory && matchesType
     })
 
@@ -175,11 +176,12 @@ export default function Expenses() {
             <select
               className="input-field"
               value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value as 'all' | 'recurring' | 'one-time')}
+              onChange={(e) => setSelectedType(e.target.value as 'all' | 'recurring' | 'one-time' | 'annual')}
             >
               <option value="all">Todas</option>
               <option value="recurring">Recorrentes</option>
               <option value="one-time">Únicas</option>
+              <option value="annual">Anuais</option>
             </select>
             
             <select
@@ -209,6 +211,7 @@ export default function Expenses() {
                 <span className="ml-2 text-text-muted">
                   {selectedType === 'recurring' && '(recorrentes)'}
                   {selectedType === 'one-time' && '(únicas)'}
+                  {selectedType === 'annual' && '(anuais)'}
                 </span>
               )}
             </p>
@@ -244,10 +247,16 @@ export default function Expenses() {
                         <span>{category?.name}</span>
                         <span>•</span>
                         <span>{formatDate(expense.date instanceof Date ? expense.date : new Date(expense.date))}</span>
-                        {expense.isRecurring && (
+                        {expense.type === 'recurring' && (
                           <>
                             <span>•</span>
                             <span className="text-blue-400">Recorrente</span>
+                          </>
+                        )}
+                        {expense.type === 'annual' && (
+                          <>
+                            <span>•</span>
+                            <span className="text-green-400">Anual</span>
                           </>
                         )}
                       </div>

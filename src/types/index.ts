@@ -21,9 +21,11 @@ export interface Expense {
   categoryId: string
   category: Category
   date: Date
-  type: 'one-time' | 'recurring'
+  type: 'one-time' | 'recurring' | 'annual'
   isRecurring: boolean
   recurringDay?: number
+  recurringMonth?: number
+  recurringYear?: number
   createdAt: Date
   updatedAt: Date
 }

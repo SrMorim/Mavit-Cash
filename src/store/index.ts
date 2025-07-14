@@ -126,6 +126,7 @@ const deserializeDates = (state: any): any => {
   if (!state) return state
   
   const dateFields = ['createdAt', 'updatedAt', 'date', 'deadline', 'completedAt']
+  const numericFields = ['recurringDay', 'recurringMonth', 'recurringYear']
   
   const convertDateFields = (obj: any): any => {
     if (!obj || typeof obj !== 'object') return obj
@@ -135,6 +136,8 @@ const deserializeDates = (state: any): any => {
     for (const key in converted) {
       if (dateFields.includes(key) && typeof converted[key] === 'string') {
         converted[key] = new Date(converted[key])
+      } else if (numericFields.includes(key) && typeof converted[key] === 'string') {
+        converted[key] = parseInt(converted[key], 10) || undefined
       } else if (typeof converted[key] === 'object' && converted[key] !== null) {
         converted[key] = convertDateFields(converted[key])
       }

@@ -60,3 +60,21 @@ export const getMonthDays = (month: number, year: number): number => {
 export const generateId = (): string => {
   return crypto.randomUUID()
 }
+
+export const getMonthName = (month: number): string => {
+  const monthNames = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ]
+  return monthNames[month - 1] || ''
+}
+
+export const getDaysInMonth = (month: number, year: number = new Date().getFullYear()): number => {
+  return new Date(year, month, 0).getDate()
+}
+
+export const isValidDayForMonth = (day: number, month: number, year: number = new Date().getFullYear()): boolean => {
+  if (day < 1 || day > 31) return false
+  const daysInMonth = getDaysInMonth(month, year)
+  return day <= daysInMonth
+}
